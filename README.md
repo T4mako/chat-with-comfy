@@ -12,7 +12,7 @@ LLM：调用 Chat with Comfy → ComfyUI 生成图片 → 返回本地图片路�
 你可以通过一次自然语言对话完成：
 
 - 文生图、文生视频；
-- 用一至十张图片进行编辑、合成或风格/身份参考；
+- 用一至两张图片进行编辑、合成或风格/身份参考；
 - 指定一张图片作为视频首帧，或以多张参考图保持人物、场景与风格；
 - 直接说明想用的已配置模型，或由 LLM 使用对应模式的默认模型。
 
@@ -26,13 +26,13 @@ LLM 只会在缺少生成所必需的信息时追问，例如图片尺寸、视�
 
 | 对话意图 | 工作流模式 | 使用的工作流 |
 | --- | --- | --- |
-| 纯文本生成图片 | `t2i` | `z_image_turbo_t2i.json` |
-| 用 1–10 张图编辑/合成一张图片 | `i2i` | `Flux2_max10_i2i.json` |
+| 纯文本生成图片 | `t2i` | `qwen_image_2_1_t2i.json` |
+| 用 1–2 张图编辑/合成一张图片 | `i2i` | `qwen_image_2_1_i2i.json` |
 | 纯文本生成视频 | `t2v` | `minimax_h3_t2v.json` |
 | 由一张首帧图生成视频 | `i2v` | `minimax_h3_i2v.json` |
 | 用 1–9 张参考图引导视频 | `r2v` | `minimax_h3_r2v.json` |
 
-内置 MiniMax H3 视频模型会先按随附的 `h3-prompt-writing` 规范改写提示词。新 profile 可通过 `prompt_format: "plain"` 接收原始提示词。图片编辑时，`image_1` 是主参考图，也决定输出尺寸。
+内置 MiniMax H3 视频模型会先按随附的 `h3-prompt-writing` 规范改写提示词。新 profile 可通过 `prompt_format: "plain"` 接收原始提示词。图片编辑时，`<image1>` 是主参考图，输出尺寸按主图对齐至 32 的倍数；第二张图使用 `<image2>`。
 
 ## 扩展模型
 
@@ -50,7 +50,7 @@ python scripts/comfy_media.py validate
 ## 配置
 
 1. 将 `.env.example` 复制为 `.env`，并填写 `Comfy_BASE_URL`。
-2. 按 ComfyUI 的认证方式填写凭据；不要把 `.env` 提交到版本库。
+2. 填写 `Comfy_API_KEY` Bearer token；不要把 `.env` 提交到版本库。
 3. 在仓库根目录运行健康检查：
 
 ```powershell
@@ -61,18 +61,9 @@ python scripts/comfy_media.py health
 
 ### 认证说明
 
-`Comfy_AIOHTTP_SESSION` **不是必填项**。它仅用于以 `AIOHTTP_SESSION` Cookie 认证的 ComfyUI 服务；可以是 Cookie 的值，或完整的 `AIOHTTP_SESSION=...` 字段，且可能因服务重启或密钥轮换失效。
+在 `.env` 中设置 `Comfy_API_KEY`，脚本统一发送 `Authorization: Bearer <token>`。使用直接 API token，不要填写网页登录密码。已移除 Session Cookie 和其他认证模式；旧认证变量不再读取。
 
-| 服务认证方式 | 建议配置 | 是否需要 `Comfy_AIOHTTP_SESSION` |
-| --- | --- | --- |
-| 未启用认证 | `Comfy_AUTH_MODE=none`（或 `auto`） | 否 |
-| ComfyUI-Login 的直接 API token | `Comfy_API_KEY=<启动日志中的 token>`；`auto` 或 `bearer` | 否 |
-| 只有网页会话 Cookie 可用 | `Comfy_AUTH_MODE=cookie` + Cookie | 是 |
-| 反向代理的 Basic Auth | `Comfy_AUTH_MODE=basic` + 用户名/密码 | 否 |
-
-对 ComfyUI-Login，请使用 ComfyUI 启动时打印的直接 API token，不是网页登录密码。脚本不会代你执行网页登录。`auto` 模式会在可用时同时带上 Cookie 和 Bearer token；Basic Auth 必须显式设为 `basic`。如希望彻底不发送 Cookie，请清空该变量，或使用 `Comfy_AUTH_MODE=bearer`。
-
-支持的认证模式是 `auto`（默认）、`bearer`、`cookie`、`x-api-key`、`basic` 和 `none`。可使用同义的大写 `COMFY_*` 环境变量覆盖 `.env` 中的值。
+支持大写 `COMFY_BASE_URL`、`COMFY_API_KEY`；进程环境变量优先于 `.env`。
 
 ## 在对话中使用
 

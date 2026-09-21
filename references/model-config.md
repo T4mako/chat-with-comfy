@@ -14,7 +14,7 @@ python scripts/comfy_media.py validate
 ```json
 {
   "mode": "t2i",
-  "model": "my-z-image",
+  "model": "my-qwen-image",
   "prompt": "A quiet snow-covered observatory at blue hour",
   "width": 1344,
   "height": 768
@@ -25,18 +25,18 @@ python scripts/comfy_media.py validate
 
 ## 新增同类模型
 
-如果新模型与一个已注册工作流的输入结构相同，最简方式是在 `models` 下添加一个继承项，并通过 `overrides` 替换 ComfyUI 节点的输入。例如下面的模型沿用 `z-image-turbo` 的文本、尺寸、seed 和保存节点，只替换 UNet：
+如果新模型与一个已注册工作流的输入结构相同，最简方式是在 `models` 下添加一个继承项，并通过 `overrides` 替换 ComfyUI 节点的输入。例如下面的模型沿用 `qwen-image-2.1-t2i` 的文本、尺寸、seed 和保存节点，只替换 UNet：
 
 ```json
-"my-z-image": {
-  "extends": "z-image-turbo",
-  "description": "My locally installed Z-Image variant",
-  "default_filename_prefix": "my-z-image",
+"my-qwen-image": {
+  "extends": "qwen-image-2.1-t2i",
+  "description": "My locally installed Qwen Image variant",
+  "default_filename_prefix": "my-qwen-image",
   "overrides": [
     {
-      "node": "57:28",
+      "node": "459:451",
       "input": "unet_name",
-      "value": "my_z_image_model.safetensors"
+      "value": "my_qwen_image_model.safetensors"
     }
   ]
 }
@@ -95,3 +95,9 @@ python scripts/comfy_media.py validate
 ```
 
 `prompt_format` 可设为 `plain`（默认）、`h3_base`（仅 `t2v`/`i2v`）或 `h3_reference`（仅 `r2v`）。选择 `plain` 时，prompt 原样传入工作流；H3 格式会验证相应的完整提示词字段。
+
+## Qwen Image 2.1
+
+默认图片模型为 `qwen-image-2.1-t2i` 和 `qwen-image-2.1-i2i`。文生图将像素尺寸直接写入 `459:456`；图生图支持 1–2 张参考图，提示词用 `<image1>`、`<image2>` 标识。
+
+对于直接连接的可选图片，slot 可设置 `optional_connection`，格式为 `{ "node": "459:474", "input": "images.image_2" }`。未提供该图片时，脚本删除此连接及对应的独立 LoadImage 节点；该加载节点不可供其他节点复用。带开关的工作流仍可使用 `enabled`。

@@ -1,44 +1,80 @@
 {
   "schema_version": 1,
   "models": {
-    "z-image-turbo": {
-      "description": "Z-Image Turbo text-to-image",
+    "qwen-image-2.1-t2i": {
+      "description": "Qwen Image 2.1 text-to-image",
       "mode": "t2i",
-      "workflow": "z_image_turbo_t2i.json",
+      "workflow": "qwen_image_2_1_t2i.json",
       "default": true,
-      "default_filename_prefix": "z-image-turbo",
+      "default_filename_prefix": "qwen-image-2.1-t2i",
       "bindings": {
-        "prompt": { "node": "57:27", "input": "text" },
-        "width": { "node": "57:13", "input": "width" },
-        "height": { "node": "57:13", "input": "height" },
-        "batch_size": { "node": "57:13", "input": "batch_size" },
-        "seed": { "node": "57:3", "input": "seed" },
-        "filename_prefix": { "node": "9", "input": "filename_prefix" }
+        "prompt": {
+          "node": "459:452",
+          "input": "prompt"
+        },
+        "seed": {
+          "node": "459:458",
+          "input": "seed"
+        },
+        "batch_size": {
+          "node": "459:456",
+          "input": "batch_size"
+        },
+        "filename_prefix": {
+          "node": "461",
+          "input": "filename_prefix"
+        },
+        "width": {
+          "node": "459:456",
+          "input": "width"
+        },
+        "height": {
+          "node": "459:456",
+          "input": "height"
+        }
       }
     },
-    "flux2-max10": {
-      "description": "Flux 2 image editing with up to ten inputs",
+    "qwen-image-2.1-i2i": {
+      "description": "Qwen Image 2.1 image editing with one or two inputs",
       "mode": "i2i",
-      "workflow": "Flux2_max10_i2i.json",
+      "workflow": "qwen_image_2_1_i2i.json",
       "default": true,
-      "default_filename_prefix": "Flux2",
+      "default_filename_prefix": "qwen-image-2.1-i2i",
       "bindings": {
-        "prompt": { "node": "62:6", "input": "text" },
-        "seed": { "node": "62:25", "input": "noise_seed" },
-        "batch_size": { "node": "62:47", "input": "batch_size" },
-        "filename_prefix": { "node": "9", "input": "filename_prefix" }
+        "prompt": {
+          "node": "459:474",
+          "input": "prompt"
+        },
+        "seed": {
+          "node": "459:458",
+          "input": "seed"
+        },
+        "batch_size": {
+          "node": "459:456",
+          "input": "batch_size"
+        },
+        "filename_prefix": {
+          "node": "461",
+          "input": "filename_prefix"
+        }
       },
       "image_slots": [
-        { "image": { "node": "42", "input": "image" } },
-        { "image": { "node": "46", "input": "image" }, "enabled": { "node": "148", "input": "value" } },
-        { "image": { "node": "100", "input": "image" }, "enabled": { "node": "104", "input": "value" } },
-        { "image": { "node": "106", "input": "image" }, "enabled": { "node": "110", "input": "value" } },
-        { "image": { "node": "112", "input": "image" }, "enabled": { "node": "116", "input": "value" } },
-        { "image": { "node": "118", "input": "image" }, "enabled": { "node": "122", "input": "value" } },
-        { "image": { "node": "124", "input": "image" }, "enabled": { "node": "128", "input": "value" } },
-        { "image": { "node": "130", "input": "image" }, "enabled": { "node": "134", "input": "value" } },
-        { "image": { "node": "136", "input": "image" }, "enabled": { "node": "140", "input": "value" } },
-        { "image": { "node": "142", "input": "image" }, "enabled": { "node": "146", "input": "value" } }
+        {
+          "image": {
+            "node": "470",
+            "input": "image"
+          }
+        },
+        {
+          "image": {
+            "node": "475",
+            "input": "image"
+          },
+          "optional_connection": {
+            "node": "459:474",
+            "input": "images.image_2"
+          }
+        }
       ]
     },
     "minimax-h3-t2v": {
@@ -49,12 +85,30 @@
       "default_filename_prefix": "video/MiniMax_H3",
       "prompt_format": "h3_base",
       "bindings": {
-        "prompt": { "node": "105:104", "input": "prompt" },
-        "duration": { "node": "105:111", "input": "value" },
-        "seed": { "node": "105:15", "input": "noise_seed" },
-        "aspect_ratio": { "node": "115", "input": "aspect_ratio" },
-        "megapixels": { "node": "115", "input": "megapixels" },
-        "filename_prefix": { "node": "92", "input": "filename_prefix" }
+        "prompt": {
+          "node": "105:104",
+          "input": "prompt"
+        },
+        "duration": {
+          "node": "105:111",
+          "input": "value"
+        },
+        "seed": {
+          "node": "105:15",
+          "input": "noise_seed"
+        },
+        "aspect_ratio": {
+          "node": "115",
+          "input": "aspect_ratio"
+        },
+        "megapixels": {
+          "node": "115",
+          "input": "megapixels"
+        },
+        "filename_prefix": {
+          "node": "92",
+          "input": "filename_prefix"
+        }
       }
     },
     "minimax-h3-i2v": {
@@ -65,15 +119,38 @@
       "default_filename_prefix": "video/MiniMax_H3",
       "prompt_format": "h3_base",
       "bindings": {
-        "prompt": { "node": "105:104", "input": "prompt" },
-        "duration": { "node": "105:111", "input": "value" },
-        "seed": { "node": "105:15", "input": "noise_seed" },
-        "aspect_ratio": { "node": "115", "input": "aspect_ratio" },
-        "megapixels": { "node": "115", "input": "megapixels" },
-        "filename_prefix": { "node": "92", "input": "filename_prefix" }
+        "prompt": {
+          "node": "105:104",
+          "input": "prompt"
+        },
+        "duration": {
+          "node": "105:111",
+          "input": "value"
+        },
+        "seed": {
+          "node": "105:15",
+          "input": "noise_seed"
+        },
+        "aspect_ratio": {
+          "node": "115",
+          "input": "aspect_ratio"
+        },
+        "megapixels": {
+          "node": "115",
+          "input": "megapixels"
+        },
+        "filename_prefix": {
+          "node": "92",
+          "input": "filename_prefix"
+        }
       },
       "image_slots": [
-        { "image": { "node": "114", "input": "image" } }
+        {
+          "image": {
+            "node": "114",
+            "input": "image"
+          }
+        }
       ]
     },
     "minimax-h3-r2v": {
@@ -84,19 +161,40 @@
       "default_filename_prefix": "video/MiniMax_H3",
       "prompt_format": "h3_reference",
       "bindings": {
-        "prompt": { "node": "138", "input": "value" },
-        "duration": { "node": "132", "input": "value" },
-        "seed": { "node": "129", "input": "noise_seed" },
-        "aspect_ratio": { "node": "115", "input": "aspect_ratio" },
-        "megapixels": { "node": "115", "input": "megapixels" },
-        "filename_prefix": { "node": "92", "input": "filename_prefix" }
+        "prompt": {
+          "node": "138",
+          "input": "value"
+        },
+        "duration": {
+          "node": "132",
+          "input": "value"
+        },
+        "seed": {
+          "node": "129",
+          "input": "noise_seed"
+        },
+        "aspect_ratio": {
+          "node": "115",
+          "input": "aspect_ratio"
+        },
+        "megapixels": {
+          "node": "115",
+          "input": "megapixels"
+        },
+        "filename_prefix": {
+          "node": "92",
+          "input": "filename_prefix"
+        }
       },
       "reference_images": {
         "generator_node": "136",
         "input_prefix": "ref_images.ref_image_",
         "template_node": "137",
         "load_input": "image",
-        "initial_load_nodes": ["137", "139"],
+        "initial_load_nodes": [
+          "137",
+          "139"
+        ],
         "max_images": 9
       }
     }

@@ -1,6 +1,6 @@
 ---
 name: chat-with-comfy
-description: Generate or edit images and generate videos through the user's configured ComfyUI API workflows. Use when the user asks to create, transform, render, or generate an image or video, including Flux2 multi-image editing and MiniMax H3 video requests.
+description: Generate or edit images and generate videos through the user's configured ComfyUI API workflows. Use when the user asks to create, transform, render, or generate an image or video, including Qwen Image 2.1 image editing and MiniMax H3 video requests.
 ---
 
 # Comfy Media Generation
@@ -10,7 +10,7 @@ Generate the requested media with the bundled ComfyUI API workflows and return t
 ## Route the Request
 
 - Image from text, with no input image: `t2i`.
-- Image from one to ten input images: `i2i`; it always produces one image.
+- Image from one or two input images: `i2i`; it always produces one image.
 - Video from text, with no input image: `t2v`.
 - Video beginning from one supplied image: `i2v`.
 - Video guided by one to nine supplied reference images: `r2v`.
@@ -24,7 +24,7 @@ Do not silently reinterpret a reference image as a first frame. If the role is u
 Before generation, ask one concise combined question for every applicable value the user did not specify. Do not choose defaults, infer them from the prompt, or start generation until these choices are explicit:
 
 - `t2i`: exact pixel `width` and `height`.
-- `i2i`: one to ten readable local input-image paths in intended `image_1` through `image_10` order, plus the intended role of each image. `image_1` is the primary reference and determines output dimensions.
+- `i2i`: one or two readable local input-image paths in intended `<image1>` then `<image2>` order, plus the intended role of each image. `<image1>` is the primary reference; output dimensions follow it rounded to multiples of 32.
 - Any video: `duration` from 5 to 15 seconds, `aspect_ratio`, and target `megapixels`.
 - `i2v`: one readable local input-image path and confirmation that it is the first frame.
 - `r2v`: one to nine readable local reference-image paths and the intended role of each.
@@ -40,7 +40,7 @@ Run `python scripts/comfy_media.py models` before preparing a video request when
 3. Give the rewrite the chosen duration and the role/order of every reference image.
 4. Preserve the complete rewritten English structure as the Comfy request's `prompt`; do not shorten it back to the user's original prompt.
 
-When `prompt_format` is `plain`, send a direct prompt without an H3 rewrite. For `i2i`, write a direct edit/generation instruction that identifies inputs by their ordered labels (`image_1`, `image_2`, and so on) and states how each should influence the single result.
+When `prompt_format` is `plain`, send a direct prompt without an H3 rewrite. For `i2i`, write a direct edit/generation instruction that identifies inputs by their ordered labels (`<image1>`, `<image2>`) and states how each should influence the single result.
 
 ## Generate
 

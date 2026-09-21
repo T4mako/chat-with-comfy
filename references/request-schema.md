@@ -9,14 +9,9 @@ python scripts/comfy_media.py --env path/to/.env generate --request path/to/requ
 
 ## Environment
 
-`Comfy_BASE_URL` is required. Authentication may use:
+`Comfy_BASE_URL` and `Comfy_API_KEY` are required. The runner sends the key as `Authorization: Bearer <token>` for all API requests, uploads, and downloads. Use a direct-API token, not a web-login password. Session cookies and other authentication modes are no longer read.
 
-- `Comfy_API_KEY`: sent as `Authorization: Bearer ...` by default. With the ComfyUI-Login extension, this must be the direct-API token printed by ComfyUI at startup, not the login password.
-- `Comfy_AIOHTTP_SESSION`: an existing `AIOHTTP_SESSION` cookie value or full cookie header. Session cookies can expire when the server rotates its key.
-- `Comfy_AUTH_MODE`: optional `auto`, `bearer`, `cookie`, `x-api-key`, `basic`, or `none`. Default is `auto`.
-- `Comfy_USERNAME` and `Comfy_PASSWORD`: used only when `Comfy_AUTH_MODE=basic` for a Basic-auth reverse proxy. The runner never performs a form login with these values.
-
-Uppercase `COMFY_*` spellings are also accepted and override matching values from `.env`.
+Uppercase `COMFY_*` spellings are also accepted. Process environment variables override `.env` values.
 
 ## JSON Fields
 
@@ -38,14 +33,14 @@ Mode-specific fields:
 | Mode | Required fields |
 | --- | --- |
 | `t2i` | integer `width`, integer `height` |
-| `i2i` | `input_images` containing one to ten image paths, ordered as `image_1` through `image_10` |
+| `i2i` | `input_images` containing one or two image paths, ordered as `<image1>` then `<image2>` |
 | `t2v` | `duration` from 5 to 15 seconds, `aspect_ratio`, `megapixels` |
 | `i2v` | `duration` from 5 to 15 seconds, `aspect_ratio`, `megapixels`, `input_images` containing exactly one first-frame path |
 | `r2v` | `duration` from 5 to 15 seconds, `aspect_ratio`, `megapixels`, `input_images` containing one to nine reference-image paths |
 
 Paths in `input_images` are resolved relative to the request JSON file. `output_dir`, when relative, is resolved relative to the skill root.
 
-For `i2i`, `image_1` is the primary reference and supplies the output dimensions. The runner enables only the supplied optional image slots, keeps the workflow batch size at one, and produces one output image. Describe each image's role explicitly in `prompt`.
+For Qwen `i2i`, `<image1>` is the primary reference and supplies the output dimensions, rounded to multiples of 32. The runner removes the second image connection and loader when only one image is supplied, keeps the workflow batch size at one, and produces one output image. Describe each image's role explicitly in `prompt`.
 
 ### Text-to-image example
 
@@ -63,7 +58,7 @@ For `i2i`, `image_1` is the primary reference and supplies the output dimensions
 ```json
 {
   "mode": "i2i",
-  "prompt": "Use image_1 as the composition and lighting reference. Replace its subject with the person from image_2, preserving the person's facial identity, hairstyle, and clothing details.",
+  "prompt": "Use <image1> as the composition and lighting reference. Replace its subject with the person from <image2>, preserving the person's facial identity, hairstyle, and clothing details.",
   "input_images": ["inputs/scene.png", "inputs/person.png"]
 }
 ```

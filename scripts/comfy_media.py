@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import copy
 import ipaddress
 import json
@@ -87,6 +86,7 @@ class WorkflowOverride:
 class ImageSlot:
     image: InputBinding
     enabled: InputBinding | None = None
+    optional_connection: InputBinding | None = None
 
 
 @dataclass(frozen=True)
@@ -245,6 +245,10 @@ def parse_model_profile(name: str, value: dict[str, Any]) -> ModelProfile:
             raise config_error(f"{context}.image_slots[{index}]", "must be an object")
         image_slots.append(
             ImageSlot(
+                optional_connection=(
+                    parse_binding(slot["optional_connection"], f"{context}.image_slots[{index}].optional_connection")
+                    if "optional_connection" in slot else None
+                ),
                 image=parse_binding(slot.get("image"), f"{context}.image_slots[{index}].image"),
                 enabled=(
                     parse_binding(slot["enabled"], f"{context}.image_slots[{index}].enabled")
@@ -384,11 +388,7 @@ def public_http_warning(base_url: str) -> str | None:
 @dataclass
 class Settings:
     base_url: str
-    auth_mode: str
     api_key: str
-    session_cookie: str
-    username: str
-    password: str
     warnings: list[str]
 
     @classmethod
@@ -401,72 +401,18 @@ class Settings:
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise SkillError("Comfy_BASE_URL must be an absolute http:// or https:// URL")
         if parsed.username or parsed.password:
-            raise SkillError("Do not place credentials inside Comfy_BASE_URL; use auth variables")
-
-        auth_mode = first_value(source, "COMFY_AUTH_MODE", "Comfy_AUTH_MODE").lower() or "auto"
-        allowed = {"auto", "bearer", "cookie", "x-api-key", "basic", "none"}
-        if auth_mode not in allowed:
-            raise SkillError(f"Comfy_AUTH_MODE must be one of: {', '.join(sorted(allowed))}")
-
+            raise SkillError("Do not place credentials inside Comfy_BASE_URL; use Comfy_API_KEY")
         api_key = first_value(source, "COMFY_API_KEY", "Comfy_API_KEY")
-        session_cookie = first_value(
-            source,
-            "COMFY_AIOHTTP_SESSION",
-            "Comfy_AIOHTTP_SESSION",
-        )
-        username = first_value(source, "COMFY_USERNAME", "Comfy_USERNAME")
-        password = first_value(source, "COMFY_PASSWORD", "Comfy_PASSWORD")
-
-        warnings: list[str] = []
-        transport_warning = public_http_warning(base_url)
-        if transport_warning:
-            warnings.append(transport_warning)
-        if api_key and any(character.isspace() for character in api_key):
-            warnings.append(
-                "Comfy_API_KEY contains whitespace and will not be sent. Copy the exact direct-API token instead of a placeholder or login password."
-            )
-
-        return cls(
-            base_url=base_url,
-            auth_mode=auth_mode,
-            api_key=api_key,
-            session_cookie=session_cookie,
-            username=username,
-            password=password,
-            warnings=warnings,
-        )
+        if not api_key or any(char.isspace() for char in api_key):
+            raise SkillError("Comfy_API_KEY must contain a non-empty Bearer token without whitespace")
+        warning = public_http_warning(base_url)
+        return cls(base_url=base_url, api_key=api_key, warnings=[warning] if warning else [])
 
     def auth_headers(self) -> dict[str, str]:
-        headers: dict[str, str] = {}
-        usable_api_key = self.api_key and not any(char.isspace() for char in self.api_key)
-
-        if self.auth_mode in {"auto", "cookie"} and self.session_cookie:
-            if self.session_cookie.lstrip().lower().startswith("aiohttp_session="):
-                headers["Cookie"] = self.session_cookie
-            else:
-                headers["Cookie"] = f"AIOHTTP_SESSION={self.session_cookie}"
-
-        if self.auth_mode in {"auto", "bearer"} and usable_api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        elif self.auth_mode == "x-api-key" and usable_api_key:
-            headers["X-API-Key"] = self.api_key
-        elif self.auth_mode == "basic":
-            if not self.username or not self.password:
-                raise SkillError("Comfy_USERNAME and Comfy_PASSWORD are required for basic auth")
-            pair = f"{self.username}:{self.password}".encode("utf-8")
-            headers["Authorization"] = "Basic " + base64.b64encode(pair).decode("ascii")
-
-        return headers
+        return {"Authorization": f"Bearer {self.api_key}"}
 
     def auth_summary(self) -> dict[str, Any]:
-        usable_key = bool(self.api_key) and not any(char.isspace() for char in self.api_key)
-        return {
-            "mode": self.auth_mode,
-            "api_key_configured": bool(self.api_key),
-            "api_key_usable": usable_key,
-            "session_cookie_configured": bool(self.session_cookie),
-            "basic_credentials_configured": bool(self.username and self.password),
-        }
+        return {"mode": "bearer", "api_key_configured": bool(self.api_key)}
 
 
 class ComfyClient:
@@ -558,9 +504,9 @@ class ComfyClient:
         except ApiError as error:
             result["reachable"] = error.status is not None
             result["status"] = error.status
-            if error.status == 401:
+            if error.status in {401, 403}:
                 result["message"] = (
-                    "ComfyUI is reachable but authentication failed. For ComfyUI-Login, set Comfy_API_KEY to the exact direct-API Bearer token printed at server startup, or refresh Comfy_AIOHTTP_SESSION."
+                    "ComfyUI is reachable but authentication failed. For ComfyUI-Login, set Comfy_API_KEY to the exact direct-API Bearer token printed at server startup."
                 )
             else:
                 result["message"] = str(error)
@@ -578,17 +524,11 @@ class ComfyClient:
                 },
             }
         )
-        required_nodes = (
-            "SaveImage",
-            "SaveVideo",
-            "ResolutionSelector",
-            "MiniMaxH3ImageToVideo",
-            "MiniMaxH3ReferenceToVideo",
-            "ComfySwitchNode",
-            "EmptyFlux2LatentImage",
-            "Flux2Scheduler",
-            "ReferenceLatent",
-        )
+        required_nodes = sorted({
+            node["class_type"]
+            for profile in load_model_profiles().values()
+            for node in load_workflow(profile).values()
+        })
         try:
             _, queue_status = self.request_json("GET", "/queue")
             object_info, object_status = self.request_json("GET", "/object_info")
@@ -975,6 +915,11 @@ def patch_workflow(prepared: PreparedRequest, uploaded_images: list[str]) -> dic
     if prepared.mode == "i2i":
         set_profile_value(workflow, profile, "batch_size", 1)
         for index, slot in enumerate(profile.image_slots):
+            if index >= len(uploaded_images) and slot.optional_connection is not None:
+                connection = slot.optional_connection
+                del workflow[connection.node_id]["inputs"][connection.input_name]
+                del workflow[slot.image.node_id]
+                continue
             uploaded_name = uploaded_images[index] if index < len(uploaded_images) else ""
             set_binding(workflow, slot.image, uploaded_name)
             if slot.enabled is not None:
@@ -1060,6 +1005,7 @@ def validate_workflows() -> dict[str, Any]:
             required_bindings = [*profile.bindings.values(), *(item.binding for item in profile.overrides)]
             required_bindings.extend(slot.image for slot in profile.image_slots)
             required_bindings.extend(slot.enabled for slot in profile.image_slots if slot.enabled is not None)
+            required_bindings.extend(slot.optional_connection for slot in profile.image_slots if slot.optional_connection is not None)
             for binding in required_bindings:
                 node_id = binding.node_id
                 node = workflow.get(node_id)
